@@ -1,0 +1,2 @@
+model_title;model_hash;r2;mae;rmse;accuracy;f1_score;roc_auc;irb_regr;irb_clas;irb_total
+SARIMAXv2.4 (1, 1, 2)(0, 0, 1, 5) + 346;377374a5;0,7393;3,965;5,2363;0,4237;0,4848;0,4218;0,8714;0,8428;0,8556

@@ -1,0 +1,2 @@
+model_title;model_hash;r2;mae;rmse;accuracy;f1_score;roc_auc;irb_regr;irb_clas;irb_total
+Transformerv3.4 (10,128,4,1,0.10,128,0.00475) (YeoJohnson) (Standard) + 456;a542c053;-1,4689;15,2582;16,1152;0,5085;0,5915;0,5052;-0,4373;1,0165;0,3623

@@ -1,0 +1,2 @@
+model_title;model_hash;r2;mae;rmse;accuracy;f1_score;roc_auc;irb_regr;irb_clas;irb_total
+SARIMAXv2.4 (3, 0, 2)(0, 0, 0, 5) (RetLog) (Standard) + 23;3020eabc;0,667;4,1936;5,9185;0,4483;0,4667;0,4476;0,793;0,8644;0,8323

@@ -1,0 +1,2 @@
+model_title;model_hash;r2;mae;rmse;accuracy;f1_score;roc_auc;irb_regr;irb_clas;irb_total
+Transformerv3.4 (10,128,4,1,0.15,128,0.00075) (Log) (Standard) + 1235 (Backtesting [5d]);4cfab6f8;-1,0262;10,6755;14,5993;0,6102;0,6567;0,608;-0,2147;1,1888;0,5572

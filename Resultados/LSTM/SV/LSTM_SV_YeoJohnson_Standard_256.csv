@@ -1,0 +1,2 @@
+model_title;model_hash;r2;mae;rmse;accuracy;f1_score;roc_auc;irb_regr;irb_clas;irb_total
+LSTMv3.4 (30,[192],0.10,64,0.00041) (YeoJohnson) (Standard) + 256;36a9fedf;0,5782;5,3124;6,6609;0,6441;0,6667;0,6431;0,6728;1,2396;0,9845

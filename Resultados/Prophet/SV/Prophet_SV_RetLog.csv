@@ -1,0 +1,2 @@
+model_title;model_hash;r2;mae;rmse;accuracy;f1_score;roc_auc;irb_regr;irb_clas;irb_total
+Prophetv2.3 (0.8,10.0,0.1,50,0.95,0.8) (RetLog);76cd4146;-12,2463;26,5775;37,3256;0,4483;0,3846;0,4524;-4,9513;0,8178;-1,7783

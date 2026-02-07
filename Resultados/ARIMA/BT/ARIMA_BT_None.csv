@@ -1,0 +1,2 @@
+model_title;model_hash;r2;mae;rmse;accuracy;f1_score;roc_auc;irb_regr;irb_clas;irb_total
+ARIMAv2.3 (3, 1, 2);4609d943;0,8046;3,323;4,534;0,4068;0,4262;0,4063;0,9967;0,7862;0,8809

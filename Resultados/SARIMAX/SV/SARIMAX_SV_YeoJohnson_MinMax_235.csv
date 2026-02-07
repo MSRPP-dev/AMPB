@@ -1,0 +1,2 @@
+model_title;model_hash;r2;mae;rmse;accuracy;f1_score;roc_auc;irb_regr;irb_clas;irb_total
+SARIMAXv2.4 (0, 1, 0)(1, 0, 0, 5) (YeoJohnson) (MinMax) + 235;ec85b346;0,9163;2,4727;2,9671;0,9492;0,9524;0,9483;1,3335;1,809;1,595

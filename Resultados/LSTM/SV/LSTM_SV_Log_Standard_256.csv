@@ -1,0 +1,2 @@
+model_title;model_hash;r2;mae;rmse;accuracy;f1_score;roc_auc;irb_regr;irb_clas;irb_total
+LSTMv3.4 (30,[192],0.10,64,0.00041) (Log) (Standard) + 256;56aad712;0,5247;5,5828;7,0708;0,7119;0,7463;0,7098;0,6275;1,3752;1,0387

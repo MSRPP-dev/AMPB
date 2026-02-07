@@ -1,0 +1,2 @@
+model_title;model_hash;r2;mae;rmse;accuracy;f1_score;roc_auc;irb_regr;irb_clas;irb_total
+RFv1.3 (50,None,2,1,sqrt) + 15;a884c91e;0,8057;3,2226;4,521;0,4068;0,4444;0,4057;1,0084;0,7968;0,892

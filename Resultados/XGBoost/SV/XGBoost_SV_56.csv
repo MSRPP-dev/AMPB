@@ -1,0 +1,2 @@
+model_title;model_hash;r2;mae;rmse;accuracy;f1_score;roc_auc;irb_regr;irb_clas;irb_total
+XGBoostv1.3 (200,6,0.2,0.8,1.0,0,1) + 56;1f8361ac;-2,3411;16,5669;18,747;0,6949;0,7097;0,6943;-0,8148;1,3319;0,3659
