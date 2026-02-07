@@ -1,0 +1,10 @@
+[project]
+name = "AMPBLib"
+version = "4.3.10"
+description = "Librería con funciones auxiliares para el proyecto AMPB"
+authors = [{name="MSRPP", email="contact@megastormsystems.com"}]
+dependencies = []
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"

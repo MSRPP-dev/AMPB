@@ -1,0 +1,171 @@
+<!-- templates/login.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - AMPB Simulador</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='ampb-favicon.ico') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='ampb-favicon.png') }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='ampb-favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+</head>
+<body>
+  <div class="login-container">
+    <form method="post" id="loginForm">
+      {{ form.hidden_tag() }}
+
+      <img src="{{ url_for('static', filename='logo.png') }}" 
+           alt="Logo" class="login-logo">
+
+      <h1>Simulador</h1>
+
+      {% with messages = get_flashed_messages(category_filter=['error']) %}
+        {% if messages %}
+          <div class="flash error">{{ messages[0] }}</div>
+        {% endif %}
+      {% endwith %}
+
+      <label for="{{ form.username.id }}">{{ form.username.label.text }}</label>
+      {{ form.username(id=form.username.id) }}
+
+      <label for="{{ form.password.id }}">{{ form.password.label.text }}</label>
+      {{ form.password(id=form.password.id) }}
+
+      {{ form.submit(class="btn", id="loginBtn") }}
+    </form>
+    
+    <!-- Información adicional -->
+    <div class="login-info">
+      <p><small><i class="fas fa-info-circle"></i> {{ AMPBConfig.PROYECTO }}</small></p>
+      <p><small><i class="fas fa-user"></i> {{ AMPBConfig.AUTOR }}</small></p>
+      <p><small><i class="fas fa-university"></i> {{ AMPBConfig.UNIVERSIDAD }}</small></p>
+    </div>
+  </div>
+
+  <script>
+    // ===========================================
+    // MEJORAS UX DEL LOGIN
+    // ===========================================
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.getElementById('loginForm');
+      const loginBtn = document.getElementById('loginBtn');
+      const usernameInput = document.getElementById('{{ form.username.id }}');
+      const passwordInput = document.getElementById('{{ form.password.id }}');
+      
+      // Limpiar sessionStorage al hacer login
+      sessionStorage.clear();
+      
+      // Enfocar automáticamente el campo de usuario
+      usernameInput.focus();
+      
+      // Efecto visual en los inputs
+      [usernameInput, passwordInput].forEach(input => {
+        input.addEventListener('focus', function() {
+          this.parentElement.style.transform = 'scale(1.02)';
+          this.style.borderColor = '#C00';
+        });
+        
+        input.addEventListener('blur', function() {
+          this.parentElement.style.transform = 'scale(1)';
+          if (!this.value) {
+            this.style.borderColor = '#C00';
+          }
+        });
+      });
+      
+      // Validación en tiempo real
+      function validateForm() {
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
+        
+        const isValid = username.length >= 3 && password.length >= 6;
+        
+        loginBtn.disabled = !isValid;
+        loginBtn.style.opacity = isValid ? '1' : '0.6';
+        
+        return isValid;
+      }
+      
+      // Validar en tiempo real
+      usernameInput.addEventListener('input', validateForm);
+      passwordInput.addEventListener('input', validateForm);
+      
+      // Validación inicial
+      validateForm();
+      
+      // Manejo del submit
+      form.addEventListener('submit', function(e) {
+        if (!validateForm()) {
+          e.preventDefault();
+          showAlert('Usuario debe tener al menos 3 caracteres y contraseña 6 caracteres', 'error');
+          return;
+        }
+        
+        // Mostrar estado de carga
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Iniciando sesión...';
+        
+        // Permitir que el formulario se envíe normalmente
+        // El feedback lo manejará Flask con redirects o flash messages
+      });
+      
+      // Enter en username va a password
+      usernameInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          passwordInput.focus();
+        }
+      });
+      
+      // Enter en password envía formulario
+      passwordInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && validateForm()) {
+          form.submit();
+        }
+      });
+    });
+    
+    // Función para mostrar alertas (versión simplificada para login)
+    function showAlert(message, type = 'info') {
+      // Remover alertas existentes
+      const existingAlerts = document.querySelectorAll('.floating-alert');
+      existingAlerts.forEach(alert => alert.remove());
+      
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'floating-alert ' + type;
+      
+      const iconClass = type === 'error' ? 'fa-exclamation-triangle' : 
+                        type === 'warning' ? 'fa-exclamation-triangle' : 
+                        type === 'success' ? 'fa-check-circle' : 'fa-info-circle';
+      
+      alertDiv.innerHTML = `
+        <i class="fas ${iconClass}"></i>
+        <span>${message}</span>
+      `;
+      
+      document.body.appendChild(alertDiv);
+      
+      // Auto-remover después de 4 segundos
+      setTimeout(() => {
+        if (alertDiv.parentNode) {
+          alertDiv.remove();
+        }
+      }, 4000);
+    }
+    
+    // Auto-remover flash messages después de un tiempo
+    const flashMessages = document.querySelectorAll('.flash');
+    flashMessages.forEach(function(flash) {
+      setTimeout(function() {
+        if (flash.parentNode) {
+          flash.style.animation = 'fadeOut 0.5s ease forwards';
+          setTimeout(() => flash.remove(), 500);
+        }
+      }, 4000);
+    });
+  </script>
+</body>
+</html>

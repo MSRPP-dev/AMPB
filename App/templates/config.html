@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración - AMPB Simulador{% endblock %}
+
+{% block content %}
+<div class="config-page">
+  <div class="config-header">
+    <h2><i class="fas fa-cog"></i> Configuración del Sistema</h2>
+    <button class="btn-back" onclick="goBack()">
+      <i class="fas fa-arrow-left"></i> Volver
+    </button>
+  </div>
+  
+  <div class="config-content">
+    <!-- Información Académica (Primera) -->
+    <div class="config-section">
+      <h3><i class="fas fa-university"></i> Información académica</h3>
+      <div class="academic-info">
+        <p><strong>Proyecto:</strong> {{ AMPBConfig.PROYECTO }} (Trabajo Fin de Máster)</p>
+        <p><strong>Autor:</strong> {{ AMPBConfig.AUTOR }}</p>
+        <p><strong>Institución:</strong> {{ AMPBConfig.UNIVERSIDAD }}</p>
+      </div>
+    </div>
+
+    <!-- Información del Sistema -->
+    <div class="config-section">
+      <h3><i class="fas fa-info-circle"></i> Información del sistema</h3>
+      <div class="system-info">
+        <div class="info-grid">
+          <div class="info-item">
+            <strong>Aplicación:</strong> AMPB Simulador
+          </div>
+          <div class="info-item">
+            <strong>Versión:</strong> 0.1.0
+          </div>
+          <div class="info-item">
+            <strong>Framework:</strong> Flask + Python
+          </div>
+        </div>
+        
+        <h4><i class="fas fa-chart-bar"></i> Tickers disponibles</h4>
+		<div class="tickers-info">
+			{% for ticker in tickers %}
+			<div class="ticker-config-item">
+			  <h5>{{ ticker.ticker }} - {{ ticker.name }}</h5>
+
+			  {% set all_models = (ticker.general_models or []) + (ticker.regression_models or []) + (ticker.classification_models or []) %}
+
+			  <div class="models-list">
+				{% if all_models %}
+				  <div class="model-category-small">
+					<strong>Modelos:</strong>
+					<ul style="margin:8px 0 0 16px; padding:0;">
+					  {% for model in all_models %}
+						<li style="margin:4px 0;">
+						  <span class="model-tag">{{ model.display_name }} - </span>						   						  
+						  <span class="dataset-labels" data-dataset-number="{{ model.dataset_number }}">
+							{{ model.dataset_labels|join(', ') if model.dataset_labels else 'Cargando...' }}
+						  </span>
+						  [<code>{{ model.model_file }}</code>]
+						</li>
+					  {% endfor %}
+					</ul>
+				  </div>
+				{% else %}
+				  <div class="model-category-small"><em>No hay modelos disponibles</em></div>
+				{% endif %}
+			  </div>
+			</div>
+			{% endfor %}
+		</div>		
+      </div>
+    </div>
+
+    <!-- Información de Usuarios -->
+    <div class="config-section">
+      <h3><i class="fas fa-users"></i> {% if is_admin %}Información de usuarios{% else %}Mi información{% endif %}</h3>
+      
+      {% if is_admin %}
+      <!-- Botón para crear usuario (solo admin) -->
+      <div class="admin-actions">
+        <button class="btn btn-success" onclick="openCreateUserModal()">
+          <i class="fas fa-user-plus"></i> Crear usuario
+        </button>
+      </div>
+      {% endif %}
+
+      <div class="users-info">
+        {% for usuario in usuarios_info %}
+        <div class="user-card">
+          <div class="user-header">
+            <h4>
+              <i class="fas fa-user"></i> {{ usuario.username }}
+              {% if usuario.is_admin %}<span class="admin-badge">ADMIN</span>{% endif %}
+            </h4>
+            {% if is_admin and usuario.username != 'admin' %}
+            <button class="btn btn-danger btn-small" onclick="confirmDeleteUser('{{ usuario.username }}')">
+              <i class="fas fa-user-minus"></i> Eliminar
+            </button>
+            {% endif %}
+          </div>
+          
+          <div class="user-details-grid">
+            <!-- Columna 1: Datos básicos -->
+            <div class="user-basic-info">
+              <h5>Información Básica</h5>
+              <p><strong>Primer login:</strong> {{ usuario.primer_login.strftime('%Y-%m-%d %H:%M') if usuario.primer_login != 'N/A' else 'N/A' }}</p>
+              <p><strong>Último login:</strong> {{ usuario.ultimo_login.strftime('%Y-%m-%d %H:%M') if usuario.ultimo_login != 'N/A' else 'N/A' }}</p>
+            </div>
+            
+            <!-- Columna 2: Simulaciones -->
+            <div class="simulation-info">
+              <h5>Fechas de simulación</h5>
+              {% if usuario.simulaciones %}
+                {% for ticker, fecha in usuario.simulaciones.items() %}
+                <div class="simulation-item">
+                  <span class="ticker-name">{{ ticker }}:</span> 
+                  <span class="simulation-date">{{ fecha }}</span>
+                  <button class="btn-small btn-warning" title="Reiniciar simulación" onclick="confirmResetSimulation('{{ ticker }}')">
+                    <i class="fas fa-undo"></i>
+                  </button>
+                </div>
+                {% endfor %}
+              {% else %}
+                <p class="no-data"><em>No hay simulaciones activas</em></p>
+              {% endif %}
+            </div>
+          </div>
+          
+          <!-- Resumen financiero (ancho completo) -->
+          <div class="financial-summary">
+            <h5>Resumen financiero</h5>
+            <div class="transaction-summary">
+              <p><strong>Total de transacciones:</strong> {{ usuario.total_transacciones }}</p>
+            </div>
+            
+            {% if usuario.ticker_stats %}
+              <div class="ticker-financials">
+                {% for ticker, stats in usuario.ticker_stats.items() %}
+                <div class="ticker-financial-item">
+                  <div class="ticker-info">
+                    <strong>{{ ticker }}:</strong> 
+                    <span class="balance {% if stats.balance >= 0 %}positive{% else %}negative{% endif %}">
+                      {{ "${:,.2f}".format(stats.balance) }}
+                    </span>
+                  </div>
+                  <div class="ticker-actions">
+                    <button class="btn-small btn-danger" onclick="confirmResetTransactions('{{ ticker }}')">
+                      <i class="fas fa-trash"></i> Limpiar
+                    </button>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              
+              <div class="total-balance-centered">
+                <strong>Ganancias/Pérdidas Totales: </strong>
+                <span class="balance {% if usuario.total_general >= 0 %}positive{% else %}negative{% endif %}">
+                  {{ "${:,.2f}".format(usuario.total_general) }}
+                </span>
+              </div>
+            {% else %}
+              <p class="no-data"><em>No hay transacciones registradas</em></p>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+        
+        {% if not usuarios_info %}
+        <div class="no-users">
+          <p><em>No hay información de usuarios disponible</em></p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para crear usuario (solo admin) -->
+{% if is_admin %}
+<div id="createUserModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-user-plus"></i> Crear nuevo usuario</h3>
+      <span class="close" onclick="closeCreateUserModal()">&times;</span>
+    </div>
+    <form id="createUserForm" action="{{ url_for('create_user') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="username">Nombre de usuario:</label>
+          <input type="text" id="username" name="username" pattern="[A-Za-z0-9_]+" minlength="3" maxlength="25" required>
+          <small>Solo letras, números y guion bajo. Mínimo 3 caracteres.</small>
+        </div>
+        <div class="form-group">
+          <label for="password">Contraseña:</label>
+          <input type="password" id="password" name="password" minlength="6" required>
+          <small>Mínimo 6 caracteres.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeCreateUserModal()">Cancelar</button>
+        <button type="submit" class="btn btn-success">Crear usuario</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal de confirmación -->
+<div id="confirmModal" class="modal">
+  <div class="modal-content modal-small">
+    <div class="modal-header">
+      <h3 id="confirmTitle"><i class="fas fa-exclamation-triangle"></i> Confirmar acción</h3>
+      <span class="close" onclick="closeConfirmModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <p id="confirmMessage">¿Estás seguro de que quieres continuar?</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="confirmButton">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===========================================
+// CONVERTIR NÚMEROS DE DATASET A ETIQUETAS
+// ===========================================
+const DATASET_DIGITS_MAP = {
+  '1': 'Datos directos',
+  '2': 'Indicadores técnicos',
+  '3': 'Big Tech', 
+  '4': 'Índices bursátiles',
+  '5': 'Indicadores económicos',
+  '6': 'Análisis de sentimiento'
+};
+
+function datasetNumberToLabels(n) {
+  // Convertir a string, crear un Set para eliminar duplicados, ordenar
+  const uniqueDigits = [...new Set(String(n).split(''))].sort();
+  
+  // Filtrar solo dígitos válidos y mapear a etiquetas
+  return uniqueDigits
+    .filter(digit => DATASET_DIGITS_MAP.hasOwnProperty(digit))
+    .map(digit => DATASET_DIGITS_MAP[digit]);
+}
+
+// Procesar todas las etiquetas de dataset cuando se carga la página
+document.addEventListener('DOMContentLoaded', function() {
+  const datasetElements = document.querySelectorAll('.dataset-labels');
+  
+  datasetElements.forEach(element => {
+    const datasetNumber = element.getAttribute('data-dataset-number');
+    if (datasetNumber) {
+      const labels = datasetNumberToLabels(datasetNumber);
+      element.textContent = labels.length > 0 ? labels.join(', ') : 'Sin etiquetas';
+    }
+  });
+});
+
+// ===========================================
+// NAVEGACIÓN MEJORADA
+// ===========================================
+
+// Guardar la página de origen cuando se carga config
+document.addEventListener('DOMContentLoaded', function() {
+  // Si venimos de una página específica, guardarla
+  const referrer = document.referrer;
+  const currentOrigin = window.location.origin;
+  
+  // Solo guardar si es una página interna y no es un reload
+  if (referrer && referrer.startsWith(currentOrigin) && !sessionStorage.getItem('config_return_blocked')) {
+    const referrerPath = new URL(referrer).pathname;
+    // Solo guardar páginas válidas (home, trading)
+    if (referrerPath === '/' || referrerPath.startsWith('/trading/')) {
+      sessionStorage.setItem('config_return_url', referrer);
+    }
+  }
+  
+  // Limpiar el bloqueo si existe
+  sessionStorage.removeItem('config_return_blocked');
+});
+
+function goBack() {
+  // Prioridad 1: URL guardada en sessionStorage
+  const returnUrl = sessionStorage.getItem('config_return_url');
+  if (returnUrl) {
+    sessionStorage.removeItem('config_return_url');
+    window.location.href = returnUrl;
+    return;
+  }
+  
+  // Prioridad 2: History API (si hay historial)
+  if (window.history.length > 1) {
+    // Bloquear guardar nueva referencia en el próximo reload
+    sessionStorage.setItem('config_return_blocked', 'true');
+    window.history.back();
+    return;
+  }
+  
+  // Prioridad 3: Ir a home como fallback
+  window.location.href = '/';
+}
+
+// ===========================================
+// MODALES Y CONFIRMACIONES
+// ===========================================
+
+// Modal de crear usuario
+function openCreateUserModal() {
+  document.getElementById('createUserModal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCreateUserModal() {
+  document.getElementById('createUserModal').style.display = 'none';
+  document.body.style.overflow = 'auto';
+  document.getElementById('createUserForm').reset();
+}
+
+// Manejar envío del formulario de crear usuario
+document.getElementById('createUserForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  
+  const submitBtn = this.querySelector('button[type="submit"]');
+  const resetBtn = showButtonLoading ? showButtonLoading(submitBtn, 'Creando...') : null;
+  
+  const formData = new FormData(this);
+  fetch('/create_user', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => {
+    if (response.redirected) {
+      closeCreateUserModal();
+      // Bloquear guardar nueva referencia
+      sessionStorage.setItem('config_return_blocked', 'true');
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    }
+  })
+  .catch(error => {
+    console.error('Error creating user:', error);
+    showAlert('Error al crear usuario', 'error');
+  })
+  .finally(() => {
+    if (resetBtn) resetBtn();
+  });
+});
+
+// Modal de confirmación
+function closeConfirmModal() {
+  document.getElementById('confirmModal').style.display = 'none';
+  document.body.style.overflow = 'auto';
+}
+
+function confirmDeleteUser(username) {
+  document.getElementById('confirmTitle').innerHTML = '<i class="fas fa-user-minus"></i> Eliminar Usuario';
+  document.getElementById('confirmMessage').textContent = `¿Estás seguro de que quieres eliminar al usuario "${username}"? Esta acción no se puede deshacer.`;
+  document.getElementById('confirmButton').onclick = function() {
+    closeConfirmModal();
+    
+    // Bloquear guardar nueva referencia
+    sessionStorage.setItem('config_return_blocked', 'true');
+    
+    fetch(`/delete_user/${username}`)
+    .then(response => {
+      if (response.redirected) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      }
+    })
+    .catch(error => {
+      console.error('Error deleting user:', error);
+      showAlert('Error al eliminar usuario', 'error');
+    });
+  };
+  document.getElementById('confirmModal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function confirmResetSimulation(ticker) {
+  document.getElementById('confirmTitle').innerHTML = '<i class="fas fa-undo"></i> Reiniciar simulación';
+  document.getElementById('confirmMessage').textContent = `¿Reiniciar la fecha de simulación para ${ticker}?`;
+  document.getElementById('confirmButton').onclick = function() {
+    // Bloquear guardar nueva referencia
+    sessionStorage.setItem('config_return_blocked', 'true');
+    window.location.href = `/reset_simulation/${ticker}`;
+  };
+  document.getElementById('confirmModal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function confirmResetTransactions(ticker) {
+  document.getElementById('confirmTitle').innerHTML = '<i class="fas fa-trash"></i> Limpiar transacciones';
+  document.getElementById('confirmMessage').textContent = `¿Eliminar todas las transacciones de ${ticker}? Esta acción no se puede deshacer.`;
+  document.getElementById('confirmButton').onclick = function() {
+    // Bloquear guardar nueva referencia
+    sessionStorage.setItem('config_return_blocked', 'true');
+    window.location.href = `/reset_transactions/${ticker}`;
+  };
+  document.getElementById('confirmModal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+// Cerrar modales al hacer clic fuera
+window.addEventListener('click', function(event) {
+  const createModal = document.getElementById('createUserModal');
+  const confirmModal = document.getElementById('confirmModal');
+  
+  if (event.target === createModal) {
+    closeCreateUserModal();
+  }
+  if (event.target === confirmModal) {
+    closeConfirmModal();
+  }
+});
+</script>
+{% endblock %}

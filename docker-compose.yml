@@ -1,0 +1,98 @@
+# ------------------------------------------------
+# Análisis de modelos predictivos en bolsa: NVIDIA
+# MSRPP
+# Copyright (C) 2024-2025 MegaStorm Systems
+#
+# This software is provided 'as-is', without any express or implied
+# warranty.  In no event will the authors be held liable for any damages
+# arising from the use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not
+# claim that you wrote the original software. If you use this software
+# in a product, an acknowledgment in the product documentation would be
+# appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+# misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
+#
+# ------------------------------------------------------------------------------------------------
+# Docker Compose para crear el entorno AMPB
+# ------------------------------------------------------------------------------------------------
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: financedb
+    restart: unless-stopped
+    ports:
+      - "27017:27017" # Puerto estándar de MongoDB
+    volumes:
+      - ./MongoDB:/data/db # Persistencia de datos de MongoDB en el host
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin      # Usuario root inicial
+      MONGO_INITDB_ROOT_PASSWORD: UEM        # Contraseña del usuario root inicial
+    command: mongod --auth # Inicia MongoDB con autenticación activada
+    networks:
+      - ampb-network
+      
+  getdata:
+    build:
+      context: ./Scripts  
+      dockerfile: Dockerfile.python
+      args:
+        REQUIREMENTS_FILE: GetData_requirements.txt
+        CRON_FILE: GetData_cron
+    container_name: getdata
+    restart: unless-stopped
+    volumes:
+      - ./Scripts:/app # Monta el directorio de scripts del host en /app dentro del contenedor
+      - ./AMPBLib:/AMPBLib # Monta la libreria AMPBLib
+    depends_on:
+      - mongodb  
+    networks:
+      - ampb-network
+
+  sa-analyzer:
+    build:
+      context: ./Scripts  
+      dockerfile: Dockerfile.python  
+      args:
+        REQUIREMENTS_FILE: SA-GetAnalyzer_requirements.txt
+        CRON_FILE: SA-Analyzer_cron
+    container_name: sa-analyzer
+    restart: unless-stopped
+    volumes:
+      - ./Scripts:/app # Monta el directorio de scripts del host en /app dentro del contenedor
+      - ./AMPBLib:/AMPBLib # Monta la libreria AMPBLib
+    depends_on:
+      - mongodb  
+    networks:
+      - ampb-network
+
+  app-sim:
+    build:
+      context: ./App  
+      dockerfile: Dockerfile.ampb
+    container_name: app-sim
+    restart: unless-stopped
+    ports:
+      - "443:443" # Puerto 443 de la aplicación web
+    volumes:
+      - ./App:/app # Monta el directorio de App del host en /app dentro del contenedor
+      - ./AMPBLib:/AMPBLib # Monta la libreria AMPBLib
+    environment: 
+      - SSL_KEY_PASSWORD=UEMRPP
+      - FLASK_SECRET_KEY=8b0e83eec25cbceb4cf98c7832209cf0e754095d081896102c8d2796c711d11c
+      - USER_CREDENTIALS_JSON={"admin":"UEMRPP"}
+    networks:
+      - ampb-network
+    depends_on: 
+      - mongodb
+      
+networks:
+  ampb-network:
+    driver: bridge

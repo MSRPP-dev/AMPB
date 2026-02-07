@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}AMPB Simulador{% endblock %}</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='ampb-favicon.ico') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='ampb-favicon.png') }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='ampb-favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <!-- Sección izquierda: Logo + Título -->
+    <div class="header-left">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="App Logo" class="app-logo">
+      <h1>Simulador</h1>
+    </div>
+    
+    <!-- Sección derecha: Navegación del usuario -->
+    <div class="header-right">
+      {% if session.user %}
+        <div class="user-info" onclick="openPasswordModal()" style="cursor: pointer;" title="Cambiar contraseña">
+          <i class="fas fa-user"></i> {{ session.user }}
+        </div>
+        <a href="{{ url_for('config') }}" class="nav-link {% if request.endpoint == 'config' %}active{% endif %}" title="Configuración">
+          <i class="fas fa-cog"></i>
+        </a>
+        <img src="{{ url_for('static', filename='logouem.png') }}" alt="Logo UEM" class="logo-uem">
+        <a href="{{ url_for('logout') }}" class="nav-link logout">
+          <i class="fas fa-sign-out-alt"></i> Salir
+        </a>
+      {% endif %}
+    </div>
+  </header>
+
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Modal de cambio de contraseña -->
+  {% if session.user %}
+  <div id="passwordModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-key"></i> Cambiar Contraseña</h3>
+        <span class="close" onclick="closePasswordModal()">&times;</span>
+      </div>
+      <form id="passwordForm" action="{{ url_for('change_password') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="current_password">Contraseña actual:</label>
+            <input type="password" id="current_password" name="current_password" required>
+          </div>
+          <div class="form-group">
+            <label for="new_password">Nueva contraseña:</label>
+            <input type="password" id="new_password" name="new_password" minlength="6" required>
+            <small>Mínimo 6 caracteres</small>
+          </div>
+          <div class="form-group">
+            <label for="confirm_password">Confirmar nueva contraseña:</label>
+            <input type="password" id="confirm_password" name="confirm_password" minlength="6" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Cargar utilidades AMPB -->
+  <script src="{{ url_for('static', filename='js/ampb-utils.js') }}"></script>
+
+  {% block scripts %}{% endblock %}
+
+  <script>
+    // Modal de cambio de contraseña
+    function openPasswordModal() {
+      document.getElementById('passwordModal').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePasswordModal() {
+      document.getElementById('passwordModal').style.display = 'none';
+      document.body.style.overflow = 'auto';
+      document.getElementById('passwordForm').reset();
+    }
+
+    // Cerrar modal al hacer clic fuera de él
+    window.addEventListener('click', function(event) {
+      const modal = document.getElementById('passwordModal');
+      if (event.target === modal) {
+        closePasswordModal();
+      }
+    });
+
+    // Validar que las contraseñas coincidan
+    document.getElementById('passwordForm').addEventListener('submit', function(e) {
+      const newPassword = document.getElementById('new_password').value;
+      const confirmPassword = document.getElementById('confirm_password').value;
+      
+      if (newPassword !== confirmPassword) {
+        e.preventDefault();
+        showAlert('Las contraseñas nuevas no coinciden', 'error');
+        return false;
+      }
+    });
+
+    // Función para mostrar alertas (mejorada)
+    function showAlert(message, type = 'info') {
+      // Remover alertas existentes
+      const existingAlerts = document.querySelectorAll('.floating-alert');
+      existingAlerts.forEach(alert => alert.remove());
+      
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'floating-alert ' + type;
+      
+      const iconClass = type === 'error' ? 'fa-exclamation-triangle' : 
+                        type === 'warning' ? 'fa-exclamation-triangle' : 
+                        type === 'success' ? 'fa-check-circle' : 'fa-info-circle';
+      
+      alertDiv.innerHTML = `
+        <i class="fas ${iconClass}"></i>
+        <span>${message}</span>
+      `;
+      
+      document.body.appendChild(alertDiv);
+      
+      // Auto-remover después de 4 segundos
+      setTimeout(() => {
+        if (alertDiv.parentNode) {
+          alertDiv.remove();
+        }
+      }, 4000);
+    }
+
+    // Función global para obtener token CSRF
+    function getCSRFToken() {
+      const metaTag = document.querySelector('meta[name=csrf-token]');
+      return metaTag ? metaTag.getAttribute('content') : '';
+    }
+
+    // Auto-remover flash messages después de un tiempo
+    document.addEventListener('DOMContentLoaded', function() {
+      const flashMessages = document.querySelectorAll('.flash');
+      flashMessages.forEach(function(flash) {
+        setTimeout(function() {
+          if (flash.parentNode) {
+            flash.style.animation = 'fadeOut 0.5s ease forwards';
+            setTimeout(() => flash.remove(), 500);
+          }
+        }, 4000);
+      });
+    });
+  </script>
+</body>
+</html>

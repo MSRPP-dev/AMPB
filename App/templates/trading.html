@@ -1,0 +1,1126 @@
+{% extends "base.html" %}
+
+{% block title %}Trading {{ ticker }} - AMPB Simulador{% endblock %}
+
+{% block content %}
+<div class="trading-page">
+  <!-- Header integrado con fecha y controles -->
+  <div class="trading-header-integrated">
+    <div class="ticker-section">
+      <img src="{{ url_for('static', filename=ticker_info.image) }}" alt="{{ ticker_info.name }}" class="ticker-logo">
+      <div class="ticker-details">
+        <h2>{{ ticker }}</h2>
+        <p>{{ ticker_info.name }}</p>
+      </div>
+    </div>
+    
+    <div class="date-controls-integrated">
+      <span class="current-date">
+        <i class="fas fa-calendar"></i> <strong>{{ current_date }}</strong>
+      </span>
+      <a href="{{ url_for('next_day', ticker=ticker) }}" class="btn btn-primary btn-next-day">
+        <i class="fas fa-forward"></i> Siguiente día
+      </a>
+    </div>
+    
+    <a href="{{ url_for('home') }}" class="btn-back-trading">
+      <i class="fas fa-arrow-left"></i> Volver
+    </a>
+  </div>
+  
+  <!-- CARD 1: Precio histórico, operaciones y predicciones -->
+  <div class="trading-card main-chart-card">
+    <div class="card-header">
+      <h3><i class="fas fa-chart-line"></i> Precio histórico, operaciones y predicciones</h3>
+      <div class="chart-controls">
+        <label for="startDate">Desde:</label>
+        <input type="date" id="startDate" min="{{ fecha_inicial }}" max="{{ current_date }}">
+      </div>
+    </div>
+    <div class="card-body chart-section">
+      <div class="chart-container-large">
+        <canvas id="priceChart" width="800" height="450"></canvas>
+      </div>
+      
+      <!-- Sección de modelos y predicciones -->
+      <div class="models-prediction-section">
+        <div class="models-grid">
+          <!-- Modelos Generales -->
+          <div class="model-category">
+            <h4 class="model-category-title general">
+              <i class="fas fa-cog"></i> Modelos generales
+            </h4>
+            <div class="model-list" id="generalModels">
+              <!-- Se llenarán dinámicamente -->
+            </div>
+          </div>
+          
+          <!-- Modelos de Regresión -->
+          <div class="model-category">
+            <h4 class="model-category-title regression">
+              <i class="fas fa-chart-area"></i> Modelos de regresión
+            </h4>
+            <div class="model-list" id="regressionModels">
+              <!-- Se llenarán dinámicamente -->
+            </div>
+          </div>
+          
+          <!-- Modelos de Clasificación -->
+          <div class="model-category">
+            <h4 class="model-category-title classification">
+              <i class="fas fa-tags"></i> Modelos de clasificación
+            </h4>
+            <div class="model-list" id="classificationModels">
+              <!-- Se llenarán dinámicamente -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- Botones de predicción -->
+        <div class="prediction-controls">
+          <button class="btn btn-primary-alt" onclick="generatePredictions()" id="generateBtn">
+            <i class="fas fa-brain"></i> Generar predicción
+          </button>
+          <button class="btn btn-danger" onclick="deletePredictions()" id="deleteBtn">
+            <i class="fas fa-trash"></i> Borrar predicciones
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- CARD 2: Posición Actual y Performance -->
+  <div class="trading-card position-performance-card">
+    <div class="card-header">
+      <h3><i class="fas fa-wallet"></i> Posición actual y estado</h3>
+    </div>
+    <div class="card-body compact-metrics">
+      <!-- Posición Actual -->
+      <div class="position-section">
+        <h4><i class="fas fa-coins"></i> Posición</h4>
+        <div class="position-grid-compact">
+          <div class="position-stat-compact">
+            <span class="stat-label">
+              Acciones 
+              <i class="fas fa-info-circle info-icon" title="Número total de acciones que posees actualmente"></i>
+            </span>
+            <span class="stat-value" id="sharesOwned">0</span>
+          </div>
+          <div class="position-stat-compact">
+            <span class="stat-label">
+              Precio actual 
+              <i class="fas fa-info-circle info-icon" title="Precio de cierre de la acción en la fecha actual de simulación"></i>
+            </span>
+            <span class="stat-value" id="currentPrice">$0.00</span>
+          </div>
+          <div class="position-stat-compact">
+            <span class="stat-label">
+              Valor posición 
+              <i class="fas fa-info-circle info-icon" title="Valor total de tus acciones al precio actual (Acciones × Precio Actual)"></i>
+            </span>
+            <span class="stat-value" id="positionValue">$0.00</span>
+          </div>
+          <div class="position-stat-compact">
+            <span class="stat-label">
+              Costo promedio 
+              <i class="fas fa-info-circle info-icon" title="Precio promedio ponderado al que compraste tus acciones"></i>
+            </span>
+            <span class="stat-value" id="avgCost">$0.00</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Performance en una línea -->
+      <div class="performance-section">
+        <h4><i class="fas fa-chart-area"></i> Estado</h4>
+        <div class="performance-inline">
+          <div class="performance-stat-inline">
+            <span class="stat-label-inline">
+              Realizadas 
+              <i class="fas fa-info-circle info-icon" title="Ganancias/pérdidas de acciones ya vendidas"></i>
+            </span>
+            <span class="stat-value-inline" id="realizedGains">$0.00</span>
+          </div>
+          <div class="performance-stat-inline">
+            <span class="stat-label-inline">
+              No realizadas 
+              <i class="fas fa-info-circle info-icon" title="Ganancias/pérdidas potenciales de acciones que aún posees"></i>
+            </span>
+            <span class="stat-value-inline" id="unrealizedGains">$0.00</span>
+          </div>
+          <div class="performance-stat-inline">
+            <span class="stat-label-inline">
+              Cash Flow 
+              <i class="fas fa-info-circle info-icon" title="Dinero neto: negativo = más invertido que retirado, positivo = más retirado que invertido"></i>
+            </span>
+            <span class="stat-value-inline" id="netCashFlow">$0.00</span>
+          </div>
+          <div class="performance-stat-inline total-performance">
+            <span class="stat-label-inline">
+              Total 
+              <i class="fas fa-info-circle info-icon" title="Suma de ganancias realizadas + no realizadas (rendimiento total)"></i>
+            </span>
+            <span class="stat-value-inline total-value" id="totalPerformance">$0.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- CARD 3: Operaciones -->
+  <div class="trading-card operations-card">
+    <div class="card-header">
+      <h3><i class="fas fa-exchange-alt"></i> Operaciones</h3>
+    </div>
+    <div class="card-body operations-section">
+      <!-- Sección de Trading en línea -->
+      <div class="trading-actions-inline">
+        <div class="action-section-inline buy-section">
+          <h4><i class="fas fa-shopping-cart"></i> Comprar</h4>
+          <div class="trade-controls-inline">
+            <input type="number" id="buyQuantity" min="1" value="1" placeholder="Cantidad">
+            <span class="cost-display-inline">Total: <span id="buyCost">$0.00</span></span>
+            <button class="btn btn-success btn-compact" onclick="executeTrade('compra')">
+              <i class="fas fa-plus"></i> Comprar
+            </button>
+          </div>
+        </div>
+        
+        <div class="action-section-inline sell-section">
+          <h4><i class="fas fa-hand-holding-usd"></i> Vender</h4>
+          <div class="trade-controls-inline">
+            <input type="number" id="sellQuantity" min="1" max="0" value="1" placeholder="Cantidad">
+            <span class="cost-display-inline">Total: <span id="sellIncome">$0.00</span></span>
+            <button class="btn btn-warning btn-compact" onclick="executeTrade('venta')">
+              <i class="fas fa-minus"></i> Vender
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Historial de Transacciones compacto -->
+      <div class="transactions-section-compact">
+        <h4><i class="fas fa-history"></i> Historial de transacciones</h4>
+        <div class="transactions-table-compact" id="transactionsTable">
+          <div class="transaction-header-compact">
+            <span>Fecha</span>
+            <span>Tipo</span>
+            <span>Acciones</span>
+            <span>Precio</span>
+            <span>Total</span>
+            <span>G/P</span>
+          </div>
+          <div class="transactions-list-compact" id="transactionsList">
+            <!-- Las transacciones se cargarán aquí -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+
+<script>
+let priceChart;
+let currentPrice = 0;
+let maxShares = 0;
+let positionData = null;
+let availableModels = {};
+
+// Obtener token CSRF
+function getCSRFToken() {
+  return document.querySelector('meta[name=csrf-token]') ? 
+         document.querySelector('meta[name=csrf-token]').getAttribute('content') : 
+         '{{ csrf_token() }}';
+}
+
+// ================================================================================================
+// GESTIÓN DE MODELOS SELECCIONADOS 
+// ================================================================================================
+
+function saveSelectedModels() {
+  const selectedModels = [];
+  document.querySelectorAll('.model-checkbox input[type="checkbox"]:checked').forEach(checkbox => {
+    selectedModels.push(checkbox.value);
+  });
+  sessionStorage.setItem(`selectedModels_{{ ticker }}`, JSON.stringify(selectedModels));
+}
+
+function restoreSelectedModels() {
+  const savedModels = sessionStorage.getItem(`selectedModels_{{ ticker }}`);
+  if (savedModels) {
+    const selectedModels = JSON.parse(savedModels);
+    selectedModels.forEach(modelName => {
+      const checkbox = document.querySelector(`.model-checkbox input[value="${modelName}"]`);
+      if (checkbox) {
+        checkbox.checked = true;
+      }
+    });
+  }
+}
+
+// Guardar selección cuando cambie cualquier checkbox
+document.addEventListener('change', function(e) {
+  if (e.target.type === 'checkbox' && e.target.closest('.model-checkbox')) {
+    saveSelectedModels();
+  }
+});
+
+// ================================================================================================
+// CARGA Y RENDERIZADO DE MODELOS
+// ================================================================================================
+
+// Cargar modelos disponibles
+function loadAvailableModels() {
+  fetch(`/get_available_models/{{ ticker }}`)
+    .then(response => response.json())
+    .then(data => {
+      availableModels = data;
+      renderModelCheckboxes();
+      // Restaurar modelos seleccionados después de renderizar
+      setTimeout(restoreSelectedModels, 100);
+    })
+    .catch(error => {
+      console.error('Error loading available models:', error);
+    });
+}
+
+// Renderizar checkboxes de modelos
+function renderModelCheckboxes() {
+  const categories = [
+    { key: 'general_models', containerId: 'generalModels' },
+    { key: 'regression_models', containerId: 'regressionModels' },
+    { key: 'classification_models', containerId: 'classificationModels' }
+  ];
+  
+  categories.forEach(category => {
+    const container = document.getElementById(category.containerId);
+    const models = availableModels[category.key] || [];
+    
+    if (models.length === 0) {
+      container.innerHTML = '<span class="no-models">No hay modelos disponibles</span>';
+      return;
+    }
+    
+    container.innerHTML = models.map(model => `
+      <div class="model-checkbox">
+        <label>
+          <input type="checkbox" value="${model.display_name}" data-dataset="${model.dataset_number}">
+          <span class="model-name">${model.display_name}</span>
+        </label>
+      </div>
+    `).join('');
+  });
+}
+
+// ================================================================================================
+// PREDICCIONES
+// ================================================================================================
+
+// Generar predicciones
+function generatePredictions() {
+  const selectedModels = [];
+  document.querySelectorAll('.model-checkbox input[type="checkbox"]:checked').forEach(checkbox => {
+    selectedModels.push(checkbox.value);
+  });
+  
+  if (selectedModels.length === 0) {
+    showAlert('Debe seleccionar al menos un modelo', 'warning');
+    return;
+  }
+  
+  const generateBtn = document.getElementById('generateBtn');
+  generateBtn.disabled = true;
+  generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+  
+  fetch(`/generate_prediction/{{ ticker }}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken(),
+    },
+    body: JSON.stringify({
+      models: selectedModels
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showAlert(data.message, 'info');
+      loadChartData(); // Recargar gráfico para mostrar nuevas predicciones
+    } else {
+      showAlert(data.error, 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error generating predictions:', error);
+    showAlert('Error al generar predicciones', 'error');
+  })
+  .finally(() => {
+    generateBtn.disabled = false;
+    generateBtn.innerHTML = '<i class="fas fa-brain"></i> Generar predicción';
+  });
+}
+
+// Borrar predicciones
+function deletePredictions() {
+  if (!confirm('¿Está seguro de que desea borrar todas las predicciones?')) {
+    return;
+  }
+  
+  const deleteBtn = document.getElementById('deleteBtn');
+  deleteBtn.disabled = true;
+  deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Borrando...';
+  
+  fetch(`/delete_predictions/{{ ticker }}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken(),
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showAlert(data.message, 'info');
+      loadChartData(); // Recargar gráfico
+    } else {
+      showAlert(data.error, 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error deleting predictions:', error);
+    showAlert('Error al borrar predicciones', 'error');
+  })
+  .finally(() => {
+    deleteBtn.disabled = false;
+    deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Borrar predicciones';
+  });
+}
+
+// ================================================================================================
+// CARGA DE DATOS Y GRÁFICA
+// ================================================================================================
+
+function loadChartData() {
+  const startDate = document.getElementById('startDate').value;
+  
+  fetch(`/get_chart_data/{{ ticker }}?start_date=${startDate}`)
+    .then(response => response.json())
+    .then(response => {
+	  updateChart(response.data, response.buy_transactions, response.sell_transactions, response.predictions, response.next_valid_dates);
+
+      // Actualizar límites del input de fecha
+      document.getElementById('startDate').min = response.min_date;
+      document.getElementById('startDate').max = response.max_date;
+    })
+    .catch(error => {
+      console.error('Error loading chart data:', error);
+    });
+}
+
+function updateChart(data, buyTransactions = [], sellTransactions = [], predictions = [], nextValidDates = []) {
+  const ctx = document.getElementById('priceChart').getContext('2d');
+
+  if (priceChart) {
+    priceChart.destroy();
+  }
+
+  // Calcular rango de precios
+  const prices = data.map(d => d.close);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const priceRange = maxPrice - minPrice;
+  const markerOffset = priceRange * 0.15;
+  const baseMarkerY = minPrice - markerOffset;
+
+  const currentPriceValue = data[data.length - 1].close;
+
+  // Función para procesar transacciones (conservar precio real y cantidad real)
+  function processAllTransactionsStacking(buyTransactions, sellTransactions) {
+    const allTransactions = [
+      ...buyTransactions.map(t => ({ ...t, type: 'buy' })),
+      ...sellTransactions.map(t => ({ ...t, type: 'sell' }))
+    ];
+    const transactionsByDate = {};
+    allTransactions.forEach(t => {
+      if (!transactionsByDate[t.x]) transactionsByDate[t.x] = [];
+      transactionsByDate[t.x].push(t);
+    });
+    const processedBuys = [];
+    const processedSells = [];
+    Object.keys(transactionsByDate).forEach(date => {
+      transactionsByDate[date].forEach((t, index) => {
+        const offset = index * (priceRange * 0.04);
+        const newY = baseMarkerY - offset;
+        const realPrice = t.y;
+        const processedTransaction = {
+          ...t,
+          y: newY,
+          originalQuantity: t.cantidad,
+          precio_unitario: realPrice
+        };
+        if (t.type === 'buy') processedBuys.push(processedTransaction);
+        else processedSells.push(processedTransaction);
+      });
+    });
+    return { processedBuys, processedSells };
+  }
+
+  const { processedBuys, processedSells } = processAllTransactionsStacking(buyTransactions, sellTransactions);
+
+  const datasets = [{
+    label: 'Precio',
+    data: data.map(d => ({ x: d.date, y: d.close })),
+    borderColor: '#9e9e9e',
+	backgroundColor: '#1e3a8a',
+    borderWidth: 1.0,
+    fill: false,
+    tension: 0,
+    spanGaps: false,
+    pointRadius: 4,
+    pointHoverRadius: 8,
+    pointHitRadius: 5,
+    yAxisID: 'y'
+  }];
+
+  if (processedBuys.length > 0) {
+    datasets.push({
+      label: 'Compras',
+      data: processedBuys,
+      borderColor: '#1B5E20',
+      backgroundColor: '#28a745',
+      pointRadius: 6,
+      pointHoverRadius: 10,
+      showLine: false,
+      pointStyle: 'triangle',
+      pointRotation: 0,
+      yAxisID: 'y'
+    });
+  }
+
+  if (processedSells.length > 0) {
+    datasets.push({
+      label: 'Ventas',
+      data: processedSells,
+      borderColor: '#FF9800',
+      backgroundColor: '#FFC107',
+      pointRadius: 6,
+      pointHoverRadius: 10,
+      showLine: false,
+      pointStyle: 'triangle',
+      pointRotation: 180,
+      yAxisID: 'y'
+    });
+  }
+
+  // -----------------------------
+  // Predicciones (general/regresión)
+  // -----------------------------
+  if (predictions.length > 0) {
+    const modelTypeColors = {
+      'general': '#9b6bff',
+      'regression': '#00b8d9'
+    };
+    const modelTypeSymbols = {
+      'general': 'circle',
+      'regression': 'rect'
+    };
+    function getModelType(modelName) {
+      const generalModels = availableModels.general_models || [];
+      const regressionModels = availableModels.regression_models || [];
+      const classificationModels = availableModels.classification_models || [];
+      if (generalModels.some(m => m.display_name === modelName)) return 'general';
+      if (regressionModels.some(m => m.display_name === modelName)) return 'regression';
+      if (classificationModels.some(m => m.display_name === modelName)) return 'classification';
+      return null;
+    }
+
+    // --- General y Regresión con líneas punteadas + puntos ---
+    const validGR = predictions.filter(pred => {
+      const t = getModelType(pred.modelo);
+      return t === 'general' || t === 'regression';
+    });
+    const modelPredictions = {};
+    validGR.forEach(pred => {
+      if (!modelPredictions[pred.modelo]) modelPredictions[pred.modelo] = [];
+      modelPredictions[pred.modelo].push(pred);
+    });
+    Object.keys(modelPredictions).forEach(modelName => {
+      const modelType = getModelType(modelName);
+      const color = modelTypeColors[modelType];
+      const symbol = modelTypeSymbols[modelType];
+      const modelPreds = modelPredictions[modelName];
+      const predictionPoints = [];
+      const predictionLines = [];
+      modelPreds.forEach(pred => {
+        const fechaGeneracion = pred.fecha_generacion;
+        const fechaPrediccion = pred.fecha_prediccion;
+        const genData = data.find(d => d.date === fechaGeneracion);
+        const startPrice = genData ? genData.close : currentPriceValue;
+
+        // Solo dibujar la línea si la fecha de generación está en el rango actual
+        if (data.some(d => d.date === fechaGeneracion)) {
+          predictionLines.push([
+            { x: fechaGeneracion, y: startPrice },
+            { x: fechaPrediccion, y: pred.y }
+          ]);
+        }
+
+        predictionPoints.push({
+          x: fechaPrediccion,
+          y: pred.y,
+          modelo: pred.modelo,
+          modelType: modelType,
+          valor: pred.y,
+          fechaGeneracion: fechaGeneracion,
+          fechaPrediccion: fechaPrediccion
+        });
+      });
+
+      predictionLines.forEach((line, index) => {
+        datasets.push({
+          label: `__line_${modelName}_${index}`,
+          data: line,
+          borderColor: color,
+          backgroundColor: 'transparent',
+          borderWidth: 1.0,
+          borderDash: [4, 4],
+          fill: false,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          tension: 0,
+          yAxisID: 'y',
+          showLine: true
+        });
+      });
+
+      if (predictionPoints.length > 0) {
+        datasets.push({
+          label: `Predicción ${modelName}`,
+          data: predictionPoints,
+          borderColor: color,
+          backgroundColor: color,
+          pointRadius: 4,
+          pointHoverRadius: 8,
+          pointHitRadius: 8,
+          showLine: false,
+          pointStyle: symbol,
+          yAxisID: 'y'
+        });
+      }
+    });
+
+    // -----------------------------
+    // Clasificación -> flechas personalizadas
+    // -----------------------------
+    const classificationPoints = [];
+    const validCL = predictions.filter(pred => getModelType(pred.modelo) === 'classification');
+	const minVisibleDate = data.length ? data[0].date : null;
+
+    validCL.forEach(pred => {
+      const fechaGeneracion = pred.fecha_generacion;
+      const fechaPrediccion = pred.fecha_prediccion;
+      const genData = data.find(d => d.date === fechaGeneracion);
+
+	  // Si la fecha de predicción cae antes del primer día visible -> no dibujar
+	  if (minVisibleDate && fechaPrediccion < minVisibleDate) {
+		//console.error('Clasif: fecha de pred antes que el primer dia visible', { minVisibleDate, fechaPrediccion });
+		return;
+	  }
+
+	  // Anclaje Y y dirección: usar SIEMPRE lo que viene del backend
+	  const refPrice = Number(pred.anchor_y);
+	  if (!Number.isFinite(refPrice) || typeof pred.is_up !== 'boolean') return;
+	  const isUp = pred.is_up;
+
+      classificationPoints.push({
+        x: fechaPrediccion,
+        y: refPrice,            // altura del precio del día de generación
+        modelo: pred.modelo,
+        isUp: isUp,
+        valor: pred.y,
+        fechaGeneracion: fechaGeneracion,
+        fechaPrediccion: fechaPrediccion,
+        fill: isUp ? '#66bb6a' : '#f44336',
+        stroke: isUp ? '#388e3c' : '#b71c1c'
+      });
+    });
+
+	const classificationLegendModels = [...new Set(classificationPoints.map(p => p.modelo))];
+	const classificationLegendLabel =
+		classificationLegendModels.length === 1
+		? `Predicción ${classificationLegendModels[0]}`
+		: `Predicción ${classificationLegendModels.join(', ')}`;
+
+    // Dataset "silencioso" solo para hover/tooltip (los dibujos reales los hace el plugin)
+    if (classificationPoints.length > 0) {
+      datasets.push({
+        //label: 'Clasificación',
+		label: classificationLegendLabel,
+        data: classificationPoints,
+        showLine: false,
+        pointRadius: 0,              // no dibujamos el punto estándar
+        pointHoverRadius: 8,
+        pointHitRadius: 12,          // para facilitar el hover
+        borderWidth: 0,
+        yAxisID: 'y',
+		isClassification: true,
+		backgroundColor: '#708090',
+        borderColor: '#596673',
+      });
+    }
+
+    // Guardamos los puntos de clasificación en opciones para que el plugin los dibuje
+    var classificationPointsForPlugin = classificationPoints;
+    // Plugin local que dibuja flechas reales
+    var classificationArrowsPlugin = {
+      id: 'classificationArrows',
+      afterDatasetsDraw(chart, args, pluginOptions) {
+        const points = pluginOptions && pluginOptions.points ? pluginOptions.points : [];
+        if (!points || points.length === 0) return;
+
+        const { ctx, scales: { x, y } } = chart;
+
+        points.forEach(p => {
+          const xPos = x.getPixelForValue(p.x);
+          const yPos = y.getPixelForValue(p.y);
+          if (!isFinite(xPos) || !isFinite(yPos)) return;
+
+          const shaft = 12;   // largo de la varilla
+          const head = 6;     // tamaño de la cabeza
+          ctx.save();
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = p.stroke;
+          ctx.fillStyle = p.fill;
+
+          if (p.isUp) {
+            // varilla hacia arriba
+            ctx.beginPath();
+            ctx.moveTo(xPos, yPos + 6);
+            ctx.lineTo(xPos, yPos - shaft);
+            ctx.stroke();
+            // cabeza
+            ctx.beginPath();
+            ctx.moveTo(xPos, yPos - shaft - head);        // punta
+            ctx.lineTo(xPos - head, yPos - shaft + 1);
+            ctx.lineTo(xPos + head, yPos - shaft + 1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            // varilla hacia abajo
+            ctx.beginPath();
+            ctx.moveTo(xPos, yPos - 6);
+            ctx.lineTo(xPos, yPos + shaft);
+            ctx.stroke();
+            // cabeza
+            ctx.beginPath();
+            ctx.moveTo(xPos, yPos + shaft + head);        // punta
+            ctx.lineTo(xPos - head, yPos + shaft - 1);
+            ctx.lineTo(xPos + head, yPos + shaft - 1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          ctx.restore();
+        });
+      }
+    };
+
+    // -----------------------------
+    // Construcción de labels del eje X  
+    // -----------------------------
+  }
+
+  const allLabels = [...data.map(d => d.date)];
+  if (nextValidDates && nextValidDates.length > 0) {
+    allLabels.push(...nextValidDates);
+  }
+
+  // Crear el chart
+  priceChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: allLabels, datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'point', intersect: true },
+      scales: {
+        y: {
+          beginAtZero: false,
+          min: baseMarkerY - (priceRange * 0.25),
+          title: { display: true, text: 'Precio ($)' }
+        },
+        x: {
+          title: { display: true, text: 'Fecha' },
+          ticks: {
+            maxRotation: 0,
+            minRotation: 0,
+            callback: function (value) {
+              const date = new Date(this.getLabelForValue(value));
+              return (date.getMonth() + 1).toString().padStart(2, '0') + '-' +
+                     date.getDate().toString().padStart(2, '0');
+            }
+          }
+        }
+      },
+      plugins: {
+        // Pasamos los puntos al plugin  
+        classificationArrows: {
+			points: classificationPointsForPlugin
+		},
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            boxWidth: 6,
+            boxHeight: 6,
+            filter: function (legendItem) { return !legendItem.text.startsWith('__'); },
+            generateLabels: function (chart) {
+              const seenLabels = new Set();
+              const labels = [];
+              chart.data.datasets.forEach((dataset, i) => {
+                if (!dataset.label.startsWith('__') && !seenLabels.has(dataset.label)) {
+                  
+				  const fill = dataset.backgroundColor || dataset.borderColor;
+				  let stroke = dataset.borderColor;
+				  let legendFill = fill;
+				  let legendStroke = stroke;
+				  let legendLineWidth = dataset.borderWidth || 2;
+				  if (dataset.label === 'Precio') {
+				    legendFill = '#1e3a8a';   
+				    legendStroke = '#1e3a8a'; 
+					legendLineWidth = 4;
+				  }
+				  seenLabels.add(dataset.label);
+                  let pointStyle = 'line', rotation = 0;
+                  if (dataset.label === 'Compras') { pointStyle = 'triangle'; rotation = 0; }
+                  else if (dataset.label === 'Ventas') { pointStyle = 'triangle'; rotation = 180; }
+                  else if (dataset.isClassification) { pointStyle = 'triangle'; rotation = 0; }
+				  else if (dataset.label.startsWith('Predicción')) { pointStyle = dataset.pointStyle || 'circle'; }                  
+                  labels.push({
+                    text: dataset.label,
+                    fillStyle: legendFill,
+                    strokeStyle: legendStroke,
+                    lineWidth: legendLineWidth,
+                    pointStyle: pointStyle,
+                    rotation: rotation,
+                    datasetIndex: i,
+                    hidden: dataset.hidden
+                  });
+                }
+              });
+              return labels;
+            }
+          }
+        },
+        tooltip: {
+          enabled: true,
+          displayColors: true,
+          callbacks: {
+            title: function (tooltipItems) {
+              if (tooltipItems.length > 0) {
+                return tooltipItems[0].label;
+              }
+              return '';
+            },
+            label: function (context) {
+              const dataset = context.dataset;
+              const label = dataset.label;
+
+              if (label && label.startsWith('__')) {
+                return null;
+              }
+
+              if (label === 'Compras') {
+                const buyData = context.raw;
+                return `Compra: ${buyData.originalQuantity} acciones a $${buyData.precio_unitario.toFixed(2)}`;
+              }
+
+              if (label === 'Ventas') {
+                const sellData = context.raw;
+                return `Venta: ${sellData.originalQuantity} acciones a $${sellData.precio_unitario.toFixed(2)}`;
+              }
+
+              if (dataset.isClassification) {
+                const c = context.raw;
+                return `${c.modelo}: ${c.isUp ? 'Sube' : 'Baja'}`;
+              }
+
+              if (label && label.startsWith('Predicción')) {
+                const predData = context.raw;
+                return [`Predicción ${predData.modelo}: $${predData.valor.toFixed(2)}`];
+              }
+
+              if (label === 'Precio') {
+                return `Precio: $${context.parsed.y.toFixed(2)}`;
+              }
+
+              return null;
+            }
+          }
+        }
+      }
+    },
+    // Registramos el plugin local
+    plugins: [{
+      id: 'classificationArrows',
+      afterDatasetsDraw(chart, args, pluginOptions) {
+        const points = chart.options.plugins &&
+                       chart.options.plugins.classificationArrows &&
+                       chart.options.plugins.classificationArrows.points
+                       ? chart.options.plugins.classificationArrows.points
+                       : [];
+        if (!points || points.length === 0) return;
+
+        const { ctx, scales: { x, y } } = chart;
+
+        points.forEach(p => {
+          const xPos = x.getPixelForValue(p.x);
+          const yPos = y.getPixelForValue(p.y);
+          if (!isFinite(xPos) || !isFinite(yPos)) return;
+
+          const shaft = 12;
+          const head = 6;
+          ctx.save();
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = p.stroke;
+          ctx.fillStyle = p.fill;
+
+          if (p.isUp) {
+            ctx.beginPath();
+            ctx.moveTo(xPos, yPos + 6);
+            ctx.lineTo(xPos, yPos - shaft);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(xPos, yPos - shaft - head);
+            ctx.lineTo(xPos - head, yPos - shaft + 1);
+            ctx.lineTo(xPos + head, yPos - shaft + 1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            ctx.beginPath();
+            ctx.moveTo(xPos, yPos - 6);
+            ctx.lineTo(xPos, yPos + shaft);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(xPos, yPos + shaft + head);
+            ctx.lineTo(xPos - head, yPos + shaft - 1);
+            ctx.lineTo(xPos + head, yPos + shaft - 1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          ctx.restore();
+        });
+      }
+    }]
+  });
+}
+
+
+// ================================================================================================
+// TRADING Y TRANSACCIONES
+// ================================================================================================
+
+// Cargar todos los datos de posición y performance
+function loadPositionData() {
+  fetch(`/get_position_data/{{ ticker }}`)
+    .then(response => response.json())
+    .then(data => {
+      positionData = data;
+      
+      // Posición Actual
+      document.getElementById('sharesOwned').textContent = data.shares;
+      document.getElementById('currentPrice').textContent = `$${data.current_price.toFixed(2)}`;
+      document.getElementById('positionValue').textContent = `$${data.position_value.toFixed(2)}`;
+      document.getElementById('avgCost').textContent = `$${data.avg_cost.toFixed(2)}`;
+      
+      // Performance
+      const realizedElement = document.getElementById('realizedGains');
+      const unrealizedElement = document.getElementById('unrealizedGains');
+      const cashFlowElement = document.getElementById('netCashFlow');
+      const totalElement = document.getElementById('totalPerformance');
+      
+      // Ganancias realizadas
+      realizedElement.textContent = `$${data.realized_gains.toFixed(2)}`;
+      realizedElement.className = `stat-value-inline ${data.realized_gains >= 0 ? 'positive' : 'negative'}`;
+      
+      // Ganancias no realizadas
+      unrealizedElement.textContent = `$${data.unrealized_gains.toFixed(2)}`;
+      unrealizedElement.className = `stat-value-inline ${data.unrealized_gains >= 0 ? 'positive' : 'negative'}`;
+      
+      // Cash flow neto
+      cashFlowElement.textContent = `$${data.net_cash_flow.toFixed(2)}`;
+      cashFlowElement.className = `stat-value-inline ${data.net_cash_flow >= 0 ? 'positive' : 'negative'}`;
+      
+      // Performance total
+      const totalGain = data.realized_gains + data.unrealized_gains;
+      totalElement.textContent = `$${totalGain.toFixed(2)}`;
+      totalElement.className = `stat-value-inline total-value ${totalGain >= 0 ? 'positive' : 'negative'}`;
+      
+      currentPrice = data.current_price;
+      maxShares = data.shares;
+      
+      // Actualizar el máximo del input de venta
+      document.getElementById('sellQuantity').max = maxShares;
+      
+      updateTradeCosts();
+    })
+    .catch(error => {
+      console.error('Error loading position data:', error);
+    });
+}
+
+// Actualizar costes de trading en tiempo real
+function updateTradeCosts() {
+  const buyQuantity = parseInt(document.getElementById('buyQuantity').value) || 0;
+  let sellQuantity = parseInt(document.getElementById('sellQuantity').value) || 0;
+  
+  // Limitar cantidad de venta
+  if (sellQuantity > maxShares) {
+    sellQuantity = maxShares;
+    document.getElementById('sellQuantity').value = maxShares;
+  }
+  
+  const buyCost = buyQuantity * currentPrice;
+  const sellIncome = sellQuantity * currentPrice;
+  
+  document.getElementById('buyCost').textContent = `$${buyCost.toFixed(2)}`;
+  document.getElementById('sellIncome').textContent = `$${sellIncome.toFixed(2)}`;
+}
+
+// Ejecutar operación
+function executeTrade(type) {
+  const quantityInput = type === 'compra' ? 'buyQuantity' : 'sellQuantity';
+  const quantity = parseInt(document.getElementById(quantityInput).value) || 0;
+  
+  if (quantity <= 0) {
+    showAlert('La cantidad debe ser mayor a 0', 'error');
+    return;
+  }
+  
+  if (type === 'venta' && quantity > maxShares) {
+    showAlert(`Solo puedes vender ${maxShares} acciones`, 'error');
+    return;
+  }
+  
+  fetch(`/execute_trade/{{ ticker }}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken(),
+    },
+    body: JSON.stringify({
+      type: type,
+      quantity: quantity
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showAlert(data.message, 'info');
+      loadPositionData();
+      loadTransactionHistory();
+      loadChartData(); // Recargar gráfico para mostrar nueva transacción
+      // Resetear inputs
+      document.getElementById(quantityInput).value = '1';
+      updateTradeCosts();
+    } else {
+      showAlert(data.error, 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error executing trade:', error);
+    showAlert('Error al ejecutar la operación', 'error');
+  });
+}
+
+// Cargar historial de transacciones
+function loadTransactionHistory() {
+  fetch(`/get_transaction_history/{{ ticker }}`)
+    .then(response => response.json())
+    .then(data => {
+      const transactionsList = document.getElementById('transactionsList');
+      
+      if (data.transactions && data.transactions.length > 0) {
+        transactionsList.innerHTML = data.transactions.map(trans => `
+          <div class="transaction-item-compact ${trans.tipo}">
+            <span>${trans.fecha}</span>
+            <span class="transaction-type-compact ${trans.tipo}">${trans.tipo}</span>
+            <span>${trans.cantidad}</span>
+            <span>$${trans.precio.toFixed(2)}</span>
+            <span>$${trans.total.toFixed(2)}</span>
+            <span class="${trans.gain_loss >= 0 ? 'positive' : 'negative'}">
+              ${trans.tipo === 'venta' ? (trans.gain_loss >= 0 ? '+$' : '-$') + Math.abs(trans.gain_loss).toFixed(2) : '--'}
+            </span>
+          </div>
+        `).join('');
+      } else {
+        transactionsList.innerHTML = '<div class="no-transactions-compact">No hay transacciones</div>';
+      }
+    })
+    .catch(error => {
+      console.error('Error loading transaction history:', error);
+    });
+}
+
+// Validación en tiempo real para input de venta
+document.getElementById('sellQuantity').addEventListener('input', function() {
+  const value = parseInt(this.value) || 0;
+  if (value > maxShares) {
+    this.value = maxShares;
+  }
+  updateTradeCosts();
+});
+
+// ================================================================================================
+// INICIALIZACIÓN
+// ================================================================================================
+
+// Cargar datos al inicializar
+document.addEventListener('DOMContentLoaded', function() {
+  // Cargar modelos disponibles (restaurará selección automáticamente)
+  loadAvailableModels();
+  
+  // Cargar datos iniciales con transacciones y predicciones
+  fetch(`/get_chart_data/{{ ticker }}`)
+    .then(response => response.json())
+    .then(response => {
+      updateChart(response.data, response.buy_transactions, response.sell_transactions, response.predictions, response.next_valid_dates);
+
+      // Configurar el input con los límites correctos
+      const startInput = document.getElementById('startDate');
+      startInput.min = response.min_date;
+      startInput.max = response.max_date;
+      
+      // Establecer valor por defecto
+      const currentDate = new Date('{{ current_date }}');
+      const fourWeeksAgo = new Date(currentDate);
+      fourWeeksAgo.setDate(currentDate.getDate() - 28);
+      
+      const defaultStart = fourWeeksAgo.toISOString().split('T')[0];
+      startInput.value = defaultStart >= response.min_date ? defaultStart : response.min_date;
+    });
+  
+  loadPositionData();
+  loadTransactionHistory();
+});
+
+// Event listeners para actualizar costes
+document.getElementById('buyQuantity').addEventListener('input', updateTradeCosts);
+
+// Actualizar gráfico cuando cambie la fecha de inicio
+document.getElementById('startDate').addEventListener('change', function() {
+  loadChartData();
+});
+</script>
+{% endblock %}

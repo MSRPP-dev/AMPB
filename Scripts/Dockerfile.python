@@ -1,0 +1,89 @@
+# ------------------------------------------------
+# Análisis de modelos predictivos en bolsa: NVIDIA
+# MSRPP
+# Copyright (C) 2024-2025 MegaStorm Systems
+#
+# This software is provided 'as-is', without any express or implied
+# warranty.  In no event will the authors be held liable for any damages
+# arising from the use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not
+# claim that you wrote the original software. If you use this software
+# in a product, an acknowledgment in the product documentation would be
+# appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+# misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
+#
+# ------------------------------------------------------------------------------------------------
+# Construcción de una imagen Linux base con:
+#  - Python 3.12
+#  - Instala requerimientos
+#  - Configura cron
+# ------------------------------------------------------------------------------------------------
+
+# Usa una imagen base de Python 3.12 (slim-bookworm basada en Debian)
+FROM python:3.12-slim-bookworm
+
+# Argumentos que se pasarán desde docker-compose.yml
+ARG REQUIREMENTS_FILE
+ARG CRON_FILE
+
+# Variables de entorno
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Crear directorio de trabajo
+WORKDIR /app
+
+# Instalar dependencias del sistema necesarias para cron, zona horaria y utiles
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    procps \
+    vim \
+    cron \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Horario de Europa/Madrid
+ENV TZ=Europe/Madrid
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Copiar el archivo de requirements al contenedor
+COPY ${REQUIREMENTS_FILE} /tmp/requirements.txt
+
+# Instalar los paquetes Python. Torch se instala de forma especial
+RUN \
+    # Actualizar pip para tener las últimas funcionalidades y correcciones
+    pip install --no-cache-dir --upgrade pip && \
+    # Comprobar si torch está en el requirements.txt
+    if grep -qE '^torch(==|>=)?' /tmp/requirements.txt; then \
+        echo "PyTorch detectado en requirements. Instalando con URL de índice específica..."; \
+        TORCH_PACKAGE_LINE=$(grep -E '^torch(==|>=)?' /tmp/requirements.txt | head -n 1); \
+        pip install --no-cache-dir "${TORCH_PACKAGE_LINE}" --index-url https://download.pytorch.org/whl/cpu; \
+        sed -i '/^torch\(==\|>=\)\?/d' /tmp/requirements.txt; \
+    fi && \
+    # Instalar el resto de los paquetes
+    if [ -s /tmp/requirements.txt ]; then \
+        pip install --no-cache-dir -r /tmp/requirements.txt; \
+    fi && \
+    rm /tmp/requirements.txt 
+
+# Copiar el archivo cron específico al directorio cron y darle los permisos correctos
+COPY ${CRON_FILE} /etc/cron.d/app-cron
+RUN chmod 0644 /etc/cron.d/app-cron && \
+    mkdir -p /var/spool/cron/crontabs && \
+    crontab /etc/cron.d/app-cron
+
+# Crear archivo de log para cron y darle permisos
+RUN touch /var/log/cron.log && chmod 0666 /var/log/cron.log
+
+# Copiar entrypoint.sh y asegurar que es ejecutable
+COPY entrypoint.sh /tmp/entrypoint.sh
+RUN chmod +x /tmp/entrypoint.sh
+
+# Usar el script como CMD
+CMD ["/tmp/entrypoint.sh"]

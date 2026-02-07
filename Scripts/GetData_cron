@@ -1,0 +1,51 @@
+# ------------------------------------------------
+# Análisis de modelos predictivos en bolsa: NVIDIA
+# MSRPP
+# Copyright (C) 2024-2025 MegaStorm Systems
+#
+# This software is provided 'as-is', without any express or implied
+# warranty.  In no event will the authors be held liable for any damages
+# arising from the use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not
+# claim that you wrote the original software. If you use this software
+# in a product, an acknowledgment in the product documentation would be
+# appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+# misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
+#
+# ------------------------------------------------------------------------------------------------
+# Configuración "cron" para:
+#
+# SA/GetData_AlphaVantage v1.3
+#  - Permite extraer noticias de Alpha Vantage por palabra clave y fecha.
+#  - Lo almacena en la base de datos MongoDB con el indice de sentimiento de Alpha Vantage.
+#  
+# SA/GetData_Reddit v1.3
+#  - Permite leer datos de Reddit dando un subforo y unas palabras clave.
+#  - Lo almacena en la base de datos MongoDB listo para ser analizado.
+#
+# SA/GetData_YahooFinance v1.3
+#  - Permite leer datos de Yahoo Finance para un ticker.
+#  - Lo almacena en la base de datos MongoDB listo para ser analizado.
+#  - Problema: solo obtiene las 10 ultimas (restriccion de datos libres)
+#
+# GetData de Alpha Vantage v1.2
+#  - Ingestador automatico de datos en MongoDB desde Alpha Vantage
+#
+# GetData de Yahoo Finance v1.2
+#  - Ingestador automatico de datos en MongoDB desde Yahoo Finance.
+#  
+# ------------------------------------------------------------------------------------------------
+
+0 23 * * * /usr/local/bin/python /app/GetDataAV_SA.py >> /var/log/cron.log 2>&1
+5 23 * * * /usr/local/bin/python /app/GetDataRD_SA.py >> /var/log/cron.log 2>&1
+10 23 * * * /usr/local/bin/python /app/GetDataYF_SA.py >> /var/log/cron.log 2>&1
+
+30 * * * * /usr/local/bin/python /app/GetDataAV.py >> /var/log/cron.log 2>&1
+45 * * * * /usr/local/bin/python /app/GetDataYF.py >> /var/log/cron.log 2>&1

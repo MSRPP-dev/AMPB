@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}AMPB Simulador - Inicio{% endblock %}
+
+{% block content %}
+<div class="welcome-section">
+  <h2>Bienvenido, {{ username }}!</h2>
+  <p class="subtitle">Selecciona un ticker para la simulación del análisis predictivo:</p>
+</div>
+
+<!-- Tickers disponibles -->
+<div class="tickers-grid">
+  {% for ticker in tickers %}
+  <div class="ticker-card" onclick="checkTickerAvailability('{{ ticker.ticker }}', {{ ticker.has_models|tojson }})">
+    <div class="ticker-header">
+      <img src="{{ url_for('static', filename=ticker.image) }}" alt="{{ ticker.name }}" class="ticker-icon">
+      <div class="ticker-info">
+        <h3>{{ ticker.ticker }}</h3>
+        <p>{{ ticker.name }}</p>
+      </div>
+    </div>
+    <div class="ticker-models">
+      <div class="models-header">Modelos disponibles:</div>
+      <div class="model-tags">
+        {% if ticker.general_models %}
+          <span class="model-label general">
+            <i class="fas fa-brain"></i>
+            General: {{ ticker.general_models|length }}
+          </span>
+        {% endif %}
+        {% if ticker.regression_models %}
+          <span class="model-label regression">
+            <i class="fas fa-chart-area"></i>
+            Regresión: {{ ticker.regression_models|length }}
+          </span>
+        {% endif %}
+        {% if ticker.classification_models %}
+          <span class="model-label classification">
+            <i class="fas fa-layer-group"></i>
+            Clasificación: {{ ticker.classification_models|length }}
+          </span>
+        {% endif %}
+        {% if not ticker.has_models %}
+          <span class="model-label unavailable">
+            <i class="fas fa-clock"></i>
+            No disponible
+          </span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="ticker-footer">
+      <small>
+        {% if ticker.has_models %}
+          <i class="fas fa-mouse-pointer"></i> Click para análisis
+        {% else %}
+          <i class="fas fa-info-circle"></i> Próximamente disponible
+        {% endif %}
+      </small>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if not tickers %}
+<div class="no-tickers">
+  <p><i class="fas fa-info-circle"></i> No hay tickers configurados.</p>
+</div>
+{% endif %}
+
+<!-- Notas importantes - centradas y más abajo -->
+<div class="important-notes-container">
+  <div class="important-notes">
+    <h3><i class="fas fa-info-circle"></i> Notas importantes</h3>
+    <ul>
+      <li><b>Trabajo de investigación</b>: esta herramienta forma parte de un proyecto académico y no constituye una recomendación de inversión.</li>
+      <li><b>Sin asesoramiento financiero</b>: los datos presentados son únicamente ilustrativos, no sustituyen el consejo de un profesional financiero.</li>
+      <li><b>Riesgos de mercado</b>: los resultados históricos no garantizan rendimientos futuros: toda inversión conlleva riesgos.</li>
+      <li><b>Uso responsable</b>: el autor no se hace responsable de decisiones de inversión tomadas basadas en esta aplicación</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// ===========================================
+// NAVEGACIÓN Y DISPONIBILIDAD DE TICKERS
+// ===========================================
+
+function checkTickerAvailability(ticker, hasModels) {
+  if (!hasModels) {
+    showAlert(`El ticker ${ticker} no está disponible aún. Los modelos están en desarrollo.`, 'info');
+    return;
+  }
+  
+  // Limpiar cualquier URL de retorno previa antes de ir a trading
+  sessionStorage.removeItem('config_return_url');
+  sessionStorage.removeItem('config_return_blocked');
+  
+  // Ir a la página de trading
+  window.location.href = `/trading/${ticker}`;
+}
+
+// ===========================================
+// MEJORAS DE UX
+// ===========================================
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Añadir efectos hover mejorados a las tarjetas
+  const tickerCards = document.querySelectorAll('.ticker-card');
+  
+  tickerCards.forEach(card => {
+    // Efecto de hover mejorado
+    card.addEventListener('mouseenter', function() {
+      const hasModels = this.onclick.toString().includes('true');
+      if (hasModels) {
+        this.style.transform = 'translateY(-8px) scale(1.02)';
+        this.style.transition = 'all 0.3s ease';
+      }
+    });
+    
+    card.addEventListener('mouseleave', function() {
+      this.style.transform = 'translateY(0) scale(1)';
+    });
+    
+    // Feedback visual para cards no disponibles
+    const hasModels = card.onclick.toString().includes('true');
+    if (!hasModels) {
+      card.style.opacity = '0.7';
+      card.style.cursor = 'not-allowed';
+      
+      // Cambiar el hover para cards no disponibles
+      card.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-2px)';
+        this.style.opacity = '0.8';
+      });
+      
+      card.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+        this.style.opacity = '0.7';
+      });
+    }
+  });
+  
+  // Animación de entrada para las tarjetas
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, index) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }, index * 100); // Delay escalonado
+      }
+    });
+  });
+  
+  // Preparar animación inicial
+  tickerCards.forEach(card => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    observer.observe(card);
+  });
+});
+
+// ===========================================
+// FUNCIONES DE UTILIDAD
+// ===========================================
+
+// Función para mostrar información detallada de un ticker (opcional)
+function showTickerDetails(ticker, models) {
+  const totalModels = (models.general_models?.length || 0) + 
+                     (models.regression_models?.length || 0) + 
+                     (models.classification_models?.length || 0);
+  
+  if (totalModels === 0) {
+    showAlert(`${ticker}: No hay modelos disponibles actualmente`, 'info');
+    return;
+  }
+  
+  let details = `${ticker} - Modelos disponibles:\n`;
+  
+  if (models.general_models?.length) {
+    details += `• General: ${models.general_models.map(m => m.display_name).join(', ')}\n`;
+  }
+  if (models.regression_models?.length) {
+    details += `• Regresión: ${models.regression_models.map(m => m.display_name).join(', ')}\n`;
+  }
+  if (models.classification_models?.length) {
+    details += `• Clasificación: ${models.classification_models.map(m => m.display_name).join(', ')}\n`;
+  }
+  
+  showAlert(details, 'info');
+}
+
+// Función para destacar tickers con más modelos
+function highlightPopularTickers() {
+  const cards = document.querySelectorAll('.ticker-card');
+  let maxModels = 0;
+  
+  // Encontrar el máximo número de modelos
+  cards.forEach(card => {
+    const modelLabels = card.querySelectorAll('.model-label:not(.unavailable)');
+    const modelCount = Array.from(modelLabels).reduce((sum, label) => {
+      const match = label.textContent.match(/(\d+)/);
+      return sum + (match ? parseInt(match[1]) : 0);
+    }, 0);
+    maxModels = Math.max(maxModels, modelCount);
+  });
+  
+  // Destacar los que tienen el máximo
+  if (maxModels > 0) {
+    cards.forEach(card => {
+      const modelLabels = card.querySelectorAll('.model-label:not(.unavailable)');
+      const modelCount = Array.from(modelLabels).reduce((sum, label) => {
+        const match = label.textContent.match(/(\d+)/);
+        return sum + (match ? parseInt(match[1]) : 0);
+      }, 0);
+      
+      if (modelCount === maxModels && modelCount > 0) {
+        card.style.borderColor = '#C00';
+        card.style.borderWidth = '3px';
+      }
+    });
+  }
+}
+
+// Ejecutar destacado después de cargar
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(highlightPopularTickers, 1000);
+});
+</script>
+{% endblock %}

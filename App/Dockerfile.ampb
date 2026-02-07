@@ -1,0 +1,53 @@
+# ------------------------------------------------
+# Análisis de modelos predictivos en bolsa: NVIDIA
+# MSRPP
+# Copyright (C) 2024-2025 MegaStorm Systems
+#
+# This software is provided 'as-is', without any express or implied
+# warranty.  In no event will the authors be held liable for any damages
+# arising from the use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not
+# claim that you wrote the original software. If you use this software
+# in a product, an acknowledgment in the product documentation would be
+# appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+# misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
+#
+# ------------------------------------------------------------------------------------------------
+# Construcción de una imagen Linux base (Debian) con:
+#  - Python 3.12
+#  - Instala requerimientos
+#  - Configura cron
+# ------------------------------------------------------------------------------------------------
+
+# Usa una imagen base de Python 3.12 (slim-bookworm basada en Debian)
+FROM python:3.12-slim-bookworm
+
+# Variables de entorno
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    FLASK_APP=AMPB-Sim.py \
+    FLASK_RUN_HOST=0.0.0.0 
+
+# Crear directorio de trabajo
+WORKDIR /app
+
+# Copiar el archivo de requirements
+COPY AMPB-Sim_requirements.txt /tmp/requirements.txt
+
+# Instalar los paquetes Python
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r /tmp/requirements.txt && \
+    rm /tmp/requirements.txt
+
+# Exponer el puerto que usará Flask con SSL
+EXPOSE 443
+
+# Instalar AMPBLib en runtime y lanzar la app
+CMD pip install -e /AMPBLib --root-user-action=ignore && python AMPB-Sim.py
